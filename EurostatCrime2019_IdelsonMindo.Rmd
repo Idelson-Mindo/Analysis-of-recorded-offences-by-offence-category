@@ -1,0 +1,226 @@
+---
+title: Analysis of recorded offences by offence category (2019)
+author: "Idelson Mindo"
+date: "2022-10-12"
+output:
+  pdf_document: 
+    toc: true
+    toc_depth: 4
+    number_sections: true
+    df_print: kable
+    fig_width: 7
+    fig_height: 6
+    fig_caption: true
+    highlight: tango
+  html_document: default
+fontsize: 11pt
+geometry: margin=1in
+header-includes:
+  - \usepackage{titling}
+  - \pretitle{\begin{center}
+    \includegraphics[width=3in,height=3in]{logo.jpg}\LARGE\\}
+  - \posttitle{\end{center}}
+---
+```{r global_options, include=FALSE, cache=FALSE}
+library(knitr)
+opts_chunk$set(echo=TRUE, 
+               warning=FALSE, 
+               message=FALSE,
+               cache = FALSE,
+               include = TRUE,
+               results = 'show',
+               error = TRUE)
+```
+
+## Introduction 
+
+The present assignment aims to manipulate and analyse police recorded offences by crime in country level for European Union Member States, EFTA countries, EU Candidate countries, and EU Potential Candidates based on homicide, assault, kidnapping,sexual violence, rape, sexual assault, robbery, burglary, burglary of private residential premises, theft, theft of a motorized land vehicle and drug crimes variables.
+
+The remainder of this report is organised as follows: In Section 2, Methods - data source and  data manipulation as well as details of the code. In section 3, present the data analyses and results. In section 4, conclusion and section 5, Material and data source.
+
+## Method 
+### Load data
+The function `read.csv()` is utilized to load the dataset as showed in the code below:
+
+```{r}
+# import csv file and set the first column as row name
+esc<- read.csv("data/EurostatCrime2019.csv", row.names = 1) 
+head(esc[, (colnames(esc[,1:3]))]) # print rows and 3 columns
+```
+In the table above is possible to have a basic demonstration of our data composed by different variables in columns and observations in rows. The have this preview of the table was utilized the `head()` function. 
+
+### The size (number of rows and columns) 
+The `dim()` function was used to determine the size of rows and columns within the dataset
+
+```{r}
+dim(esc) # dataset size
+#dim(esc)[2]
+```
+This dataset is composed by 41 rows and 13 columns. 
+
+### The structure of the dataset
+
+The function `str()` was used to determine the structure of the dataset.  This dataset is composed by 41 observations and 13 variables. 
+```{r}
+str(esc) # dataset stucture and data type
+```
+###  Remove the columns Rape and Sexual.assault
+
+For most countries sexual violence figures are the sum of rape and sexual assault so this data is not longer important for further analyses. So they will be removed from the dataset. The function `names()` from base r will be used to perform the process. 
+
+```{r}
+esc_remove2var <- esc[ , ! names(esc) %in% c("Rape", "Sexual.assault")]
+```
+
+### Remove the columns involving theft and burglary
+
+For some countries Theft includes also burglary, and theft of motorized land vehicle, in others they are recorded separately. In order to compare the different countries will be removed the following variables:
+  - Theft,
+  - Theft.of.a.motorized.land.vehicle,
+  - Burglary,
+  - Burglary.of.private.residential.premises
+
+The function `names()` from base r will be used to perform the process.
+```{r}
+esc_remove4var <- esc_remove2var[ , ! names(esc_remove2var)
+%in% c("Theft","Theft.of.a.motorized.land.vehicle",
+       "Burglary", "Burglary.of.private.residential.premises")]
+```
+
+### Overall record of offences for each country (per hundred thousand inhabitants)
+
+To have the overall record of offences for each country will be added a column. and to perform this task will be used the `apply()` function.  
+```{r}
+esc_remove4var$overall <- apply(esc_remove4var[,(1:7)], 1, sum) 
+head(esc_remove4var[8])
+```
+
+### Missing data
+
+From the new dataset created, the `rownames()` function, combined with `which()` and `complete.cases()` function was used to list the countries that contain any missing data. Therefore was identifies 19 countries with missing data. 
+```{r}
+rownames(esc_remove4var)[which(complete.cases(esc_remove4var) == FALSE)]
+```
+
+### Remove mising data
+
+The process bellow aims to remove the countries with missing data from the dataframe. Therefore, was used the `na.omit` function to perform the task. 
+
+```{r}
+esc_removeNA <- na.omit(esc_remove4var)
+```
+
+### Final dataframe
+
+After the detailed data cleaning process, the final dataframe contain 22 observations and 8 variables. 
+The `dim()` function was called again to perform this task. therefore renamed from `esc_removeNA` to `crimeData`. 
+
+```{r}
+crimeData <- esc_removeNA
+dim(crimeData)
+```
+## Analysis and Results
+
+### The 3 most common crimes in Ireland in 2019
+
+According to these data, Unlawful.acts.involving.controlled.drugs.or.precursors	with 421.84	records, Assault	(102.18 records)and Sexual.violence	with 67.86 records were the 3 most common crimes in Ireland in 2019. 
+
+```{r}
+cIrland <- crimeData["Ireland",] # filter the Ireland from the countries row name
+
+row.names(cIrland) <- LETTERS[1] # create a colmun name
+cIrland_transpose <- t(cIrland) # transpose the cIrland dataframe
+# turn the row.name column to a non row.name column 
+cIrland1 <- cbind(rownames(cIrland_transpose), 
+                  data.frame(cIrland_transpose, row.names=NULL)) 
+data_new1 <- cIrland1[order(cIrland1$A, decreasing = TRUE), ] # sort the values
+colnames(data_new1)[1] ="crime"
+colnames(data_new1)[2] ="value" # rename the columns 
+data_new1[2:4,] # select the top 3 values
+```
+
+### Proportion of the overall crimes due to Assault in Ireland in 2019
+
+16.05% was the proportion of the overall crimes due to Assault in Ireland in 2019. 
+```{r}
+prop_assault_Irl <- cIrland$Assault/cIrland$overall*100 # proportion
+prop_assault_Irl
+
+```
+
+### The highest record of kidnapping per country in 2019
+
+Luxembourg had the highest record of kidnapping in 2019 (per hundred thousand inhabitants) with 7.17 records. 
+```{r}
+rownames(crimeData)[which.max(crimeData$Kidnapping)] # indetify the country
+max(crimeData$Kidnapping) # get the value
+```
+
+### The lowest overall record of offences per country in 2019
+
+Romania had the lowest overall in 2019 (per hundred thousand inhabitants) with 70.06 records. 
+```{r}
+rownames(crimeData)[which.min(crimeData$overall)] #identify the country 
+min(crimeData$overall) #get the value
+```
+
+###  Relationship between robbery and unlawful acts involving controlled drugs or precursors
+
+The plot bellow displaying the negative correlation between robbery and unlawful acts involving controlled drugs or precursors. 
+```{r}
+plot(
+  crimeData$Robbery,
+  crimeData$Unlawful.acts.involving.controlled.drugs.or.precursors,
+  main="Robbery VS Unlawful acts involving controlled drugs or precursors",
+  xlab="Robbery", ylab="Unlawful.acts", col = "red")
+```
+
+### Overall offences per countries 
+
+Based on data obtained, Switzerland, Spain and Slovenia were the countries with higher overall records registered in 2019. However Albania, Austria and Bulgaria were the countries with lowest overall offences records registered. 
+```{r, fig.width=5.5}
+barplot(
+  sort(crimeData$overall, decreasing = FALSE), names.arg = rownames(crimeData), #sort
+  horiz = TRUE,main = "Overall offences per countries", 
+  xlab = "Overall offences",las = 1, 
+  col = "blue")
+```
+
+
+### Offences correlation
+
+Variables: 
+
+  - I.homicide =   Intentional homicide 
+  - A.I.homicide = Attempted intentional homicide 
+  - Assault = Assault 
+  - Kidnapping = Kidnapping 
+  - Sex.violence = Sexual violence 
+  - Robbery = Robbery 
+  - Unlawful_AICDOP = Unlawful acts involving controlled drugs or precursors
+
+The method is Pearson correlation was applied to infer the relationship among the offences variables and a Correlogram was generated. Positive correlations are displayed in a blue scale while negative correlations are displayed in a red scale.
+```{r}
+colnames(crimeData) <- c("I.homicide", 
+                         "A.I.homicide", "Assault", 
+                         "Kidnapping", "Sex.violence",
+                         "Robbery","Unlawful_AICDOP") #column rename
+Correl<-cor(crimeData[,1:7]) 
+Correl
+```
+
+The variables as strongly correlated each others (i.e: Assault is positively crrelated with assauls). The increase of Unlawful acts involving controlled drugs or precursors is correlated with Sexual violence (0.7254062), The Kidnaps are correlated with Assault (0.64040962) and Kidnaps are correlated with Attempted intentional homicide (0.47310218).  
+```{r}
+#install.packages("corrplot")
+library(corrplot)
+corrplot(Correl) # person correlation
+```
+
+## Conclusion 
+
+This paper presents an analysis via data analyses to understand the crimes/offences occurred in country level for European Union Member States, EFTA countries, EU Candidate countries, and EU Potential Candidates. The crime category varies across the countries and they are not similar. Countries as Switzerland, Spain and Slovenia had registered higher number of offences records. The offences records in all countries was related each other, for example there is a relation between kidnaps and assaults so when a kidnap occur there is a larger chance that the person kidnapped to be assaulted as well.  
+
+## Material and data source
+  - R website: https://www.rstudio.com/
+  - R Markdown website: https://rmarkdown.rstudio.com/
+  - data source: https://ec.europa.eu/eurostat/cache/metadata/en/crim_off_cat_esms.htm#stat_process1654673830093
